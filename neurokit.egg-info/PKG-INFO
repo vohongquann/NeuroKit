@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: neurokit
+Version: 0.1.0
+Summary: A lightweight neural network library.
+Author: Vo Hong Quan
+License: MIT
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.20
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: jupyter; extra == "dev"
+Requires-Dist: matplotlib; extra == "dev"
+Dynamic: license-file

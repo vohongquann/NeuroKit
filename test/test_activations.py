@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
 
-from core.activations import *
+from neurokit.core import activations
 
-print("Hello")
+activations.leaky_relu(0.01)
