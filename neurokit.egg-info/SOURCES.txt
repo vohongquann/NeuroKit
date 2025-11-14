@@ -18,6 +18,7 @@ neurokit.egg-info/dependency_links.txt
 neurokit.egg-info/requires.txt
 neurokit.egg-info/top_level.txt
 test/test_activations.py
+test/test_context.py
 test/test_layers.py
 test/test_network.py
 test/test_optimizers.py

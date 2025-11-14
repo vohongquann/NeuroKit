@@ -21,7 +21,7 @@ class Context:
 
     def mark_dirty(self, *tensor_indices: int):
         """Mark tensors that were modified in-place"""
-        self._dirty_indices.extend(tensor_indices)
+        self._dirty_indices = list(tensor_indices)
 
     def clear(self):
         """Free memory after backward pass"""

@@ -3,7 +3,7 @@ import numpy as np
 from typing import List, Optional, Tuple
 from .context import Context
 from .function import Function
-
+import copy
 
 class Tensor:
     """Core Tensor object supporting autograd."""
@@ -16,7 +16,14 @@ class Tensor:
         parents: Optional[List["Tensor"]] = None,
         ctx: Optional[Context] = None,
     ):
-        # Normalize data
+        if isinstance(data, Tensor):
+            if requires_grad is False and data.requires_grad:
+                requires_grad = data.requires_grad
+            grad_fn = grad_fn or data.grad_fn
+            parents = parents or data.parents
+            ctx = ctx or data.ctx
+            data = data.data.copy()
+
         if not isinstance(data, np.ndarray):
             data = np.array(data, dtype=np.float32)
         elif data.dtype != np.float32:
@@ -28,9 +35,8 @@ class Tensor:
         self.grad_fn = grad_fn
         self.parents = parents or []
         self.ctx = ctx
-        self.is_leaf = grad_fn is None
+        self.is_leaf = (grad_fn is None)
 
-    
     # Autograd
     def backward(self, grad: Optional[np.ndarray] = None):
         """Backpropagate gradient to parent tensors."""
@@ -43,14 +49,24 @@ class Tensor:
                 raise RuntimeError("Gradient can only be automatically computed for scalar tensors.")
             grad = np.ones_like(self.data, dtype=np.float32)
 
+        # Validate gradient shape - Operations must handle broadcasting
+        if grad.shape != self.data.shape:
+            raise RuntimeError(
+                f"Gradient shape {grad.shape} doesn't match tensor shape {self.data.shape}. "
+                f"Each operation must properly reduce gradients in its backward() method."
+            )
+
+        # Accumulate gradient
         if self.grad is None:
             self.grad = grad.copy()
         else:
             self.grad = self.grad + grad
 
+        # Stop if leaf node or no gradient function
         if self.is_leaf or self.grad_fn is None:
             return
 
+        # Backpropagate to parents
         grads = self.grad_fn.backward(self.ctx, grad)
         if not isinstance(grads, (tuple, list)):
             grads = (grads,)
@@ -59,10 +75,11 @@ class Tensor:
             if parent is not None and parent.requires_grad and g is not None:
                 parent.backward(g)
 
+        # Clear context after backward pass
         if self.ctx:
             self.ctx.clear()
 
-    
+
     # Helper
     def zero_grad(self):
         """Clear previous gradients."""
@@ -126,8 +143,11 @@ class Tensor:
     def __getitem__(self, key):
         from .ops import GetItem
         return GetItem.apply(self, key)
-
     
+    def __del__(self):
+        if self.ctx:
+            self.ctx.clear()
+
     # Extended math functions
     def sum(self):
         from .ops import Sum
@@ -145,13 +165,14 @@ class Tensor:
         from .ops import Log
         return Log.apply(self)
 
-    
     # Utilities
+    @property
     def shape(self) -> Tuple[int, ...]:
         return self.data.shape
 
-    def _to_data(self, other):
-        return other.data if isinstance(other, Tensor) else other
+    def reshape(self, *shape) -> "Tensor":
+        from .ops import Reshape
+        return Reshape.apply(self, shape)
 
     def __repr__(self):
-        return f"Tensor(shape={self.data.shape}, requires_grad={self.requires_grad}, data=\n{self.data})"
+        return f"Tensor(data=\n{self.data}, shape={self.data.shape}, requires_grad={self.requires_grad})"
